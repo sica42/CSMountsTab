@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create addon zip
+        run: |
+          rm -rf build
+          mkdir -p build/CSMountsTab
+
+          rsync -av \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.gitignore' \
+            --exclude='.vscode' \
+            --exclude='.editorconfig' \
+            --exclude='build' \
+            ./ build/CSMountsTab/
+
+          cd build
+          zip -r CSMountsTab.zip CSMountsTab
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/CSMountsTab.zip
