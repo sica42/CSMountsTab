@@ -1,0 +1,9 @@
+## Interface: 20503
+## Title: CSMountTab
+## Author: Sica
+## Notes: Adds a new tab in spellbook for mounts
+## Version: 0.1
+## SavedVariablesPerCharacter: CrusaderStormMountsOptions
+
+Main.lua
+Mounts.lua
