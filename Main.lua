@@ -11,12 +11,10 @@ m.isModern = C_ChatInfo and true or false
 m.mountButtons = {}
 
 ---@type table<number, MountSpellInfo>
-m.mountSpells = {}
+m.mountSpells = nil
 m.currentPage = 1
-m.delayScan = 4
 m.events = {}
 m.api = getfenv()
-
 
 function CSMounts:init()
 	self.frame = CreateFrame( "Frame" )
@@ -64,16 +62,18 @@ function CSMounts.events:PLAYER_ENTERING_WORLD()
 		m.info( "|cffaaaaaa/mounts sort|r - Change sorting", true )
 	end
 
-	m.updateMounts()
-	m.updateMountButtonDelayed( 4 )
+	m.updateMountButtonDelayed( 1, true )
 end
 
-function CSMounts.updateMountButtonDelayed( delay )
+---@param delay number
+---@param doScan boolean?
+function CSMounts.updateMountButtonDelayed( delay, doScan )
 	m.delayScan = delay
 	m.frame:SetScript( "OnUpdate", function( _, elapsed )
 		m.delayScan = m.delayScan - elapsed
 		if m.delayScan <= 0 then
 			m.frame:SetScript( "OnUpdate", nil )
+			if doScan then m.updateMounts() end
 			m.updateMountButton()
 		end
 	end )
@@ -147,15 +147,18 @@ function CSMounts.tabClick( self )
 	local id = (not m.isModern and type( self ) == "number") and self or self:GetID()
 
 	if id ~= 0 then
-		_G[ "SpellBookSkillLineTab" .. tostring( m.mountsTabIndex ) ]:SetChecked( false )
+		m.api[ "SpellBookSkillLineTab" .. tostring( m.mountsTabIndex ) ]:SetChecked( false )
 	end
 end
 
 function CSMounts.spellBookUpdate()
+	if not m.mountSpells then
+		m.updateMounts()
+	end
 	m.updateMountsTab()
 
-	if getn( m.mountSpells ) > 0 then
-		local tab = _G[ "SpellBookSkillLineTab" .. m.mountsTabIndex ]
+	if m.mountSpells and getn( m.mountSpells ) > 0 then
+		local tab = m.api[ "SpellBookSkillLineTab" .. m.mountsTabIndex ]
 
 		tab:SetNormalTexture( "Interface\\Icons\\Ability_Mount_RidingHorse" )
 		tab:SetScript( "OnEnter", function( self )
@@ -224,21 +227,19 @@ function CSMounts.updateMountsTab()
 		end
 		m.mountsFrame.labelPage:SetFormattedText( PAGE_NUMBER, m.currentPage or 1 )
 
-		_G[ "SpellBookPageText" ]:Hide()
+		m.api[ "SpellBookPageText" ]:Hide()
 		m.mountsFrame:Show()
-		m.isMountsTab = true
 	else
 		if m.mountsFrame then m.mountsFrame:Hide() end
-		m.isMountsTab = false
-		_G[ "SpellBookPageText" ]:Show()
+		m.api[ "SpellBookPageText" ]:Show()
 	end
 end
 
 function CSMounts.createMountsFrame()
 	---@class MountsFrame: Frame
-	local frame = CreateFrame( "Frame", nil, _G[ "SpellBookFrame" ] ) --, "BackdropTemplate" )
+	local frame = CreateFrame( "Frame", nil, m.api[ "SpellBookFrame" ] )
 	frame:SetAllPoints()
-	frame:SetFrameLevel( _G[ "SpellBookFrame" ]:GetFrameLevel() + 10 )
+	frame:SetFrameLevel( m.api[ "SpellBookFrame" ]:GetFrameLevel() + 10 )
 
 	for i = 1, SPELLS_PER_PAGE do
 		local btn = m.createMountSpellButton( frame, i )
@@ -451,7 +452,7 @@ function CSMounts.MountSpellButton_OnDrag( self )
 
 	if btn then
 		local slot = m.MountSpellBook_GetSpellBookSlot( self );
-		if (not slot or slot > MAX_SPELLS or not _G[ btn:GetName() .. "IconTexture" ]:IsShown()) then
+		if (not slot or slot > MAX_SPELLS or not m.api[ btn:GetName() .. "IconTexture" ]:IsShown()) then
 			return
 		end
 		btn:SetChecked( false )
@@ -464,6 +465,11 @@ function CSMounts.MountSpellButton_OnDrag( self )
 end
 
 function CSMounts.updateMountButton()
+	if IsFlyableArea() == nil then
+		m.updateMountButtonDelayed( 1 )
+		return
+	end
+
 	if not m.btnMount then
 		m.btnMount = CreateFrame( "Button", "MountFav", UIParent, "SecureActionButtonTemplate" )
 		m.btnMount:SetAttribute( "type", "spell" )

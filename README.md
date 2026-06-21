@@ -1,5 +1,5 @@
 # CSMountsTab
-**Version:** 0.1
+**Version:** 0.2
 **Game Version:** Crusader Storm WoW (2.4.3 and 2.5.3 clients)
 
 Adds a new mount tab to the spellbook.
