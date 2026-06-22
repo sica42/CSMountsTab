@@ -38,7 +38,8 @@
         "PAGE_NUMBER",
         "SlashCmdList",
         "ChatEdit_InsertLink",
-        "MacroFrameText"
+        "MacroFrameText",
+        "SetDressUpBackground"
     ],
     "Lua.type.weakUnionCheck": true
 }

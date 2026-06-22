@@ -44,6 +44,7 @@ function CSMounts.events:PLAYER_ENTERING_WORLD()
 
 	hooksecurefunc( "SpellBookFrame_Update", CSMounts.spellBookUpdate )
 	hooksecurefunc( "SpellBookSkillLineTab_OnClick", CSMounts.tabClick )
+	--	hooksecurefunc( "DressUpFrame_Show", CSMounts.dressUpShow )
 
 	m.api[ "SLASH_CSMounts1" ] = "/mounts"
 	SlashCmdList[ "CSMounts" ] = function( args )
@@ -143,10 +144,7 @@ end
 
 ---@param self CheckButton
 function CSMounts.tabClick( self )
-	if not self then return end
-	local id = (not m.isModern and type( self ) == "number") and self or self:GetID()
-
-	if id ~= 0 then
+	if SpellBookFrame.selectedSkillLine ~= 0 then
 		m.api[ "SpellBookSkillLineTab" .. tostring( m.mountsTabIndex ) ]:SetChecked( false )
 	end
 end
@@ -157,7 +155,7 @@ function CSMounts.spellBookUpdate()
 	end
 	m.updateMountsTab()
 
-	if m.mountSpells and getn( m.mountSpells ) > 0 then
+	if m.mountSpells and getn( m.mountSpells ) > 0 and SpellBookFrame.bookType == "spell" then
 		local tab = m.api[ "SpellBookSkillLineTab" .. m.mountsTabIndex ]
 
 		tab:SetNormalTexture( "Interface\\Icons\\Ability_Mount_RidingHorse" )
@@ -175,7 +173,7 @@ function CSMounts.updateMountsTab()
 		m.updateMounts()
 	end
 
-	if SpellBookFrame.currentTab.bookType == "spell" and SpellBookFrame.selectedSkillLine == 0 then
+	if SpellBookFrame.bookType == "spell" and SpellBookFrame.selectedSkillLine == 0 then
 		if not m.mountsFrame then
 			m.createMountsFrame()
 		end
@@ -190,6 +188,7 @@ function CSMounts.updateMountsTab()
 				sBtn:SetAttribute( "spell", mountInfo.name )
 				sBtn:SetAttribute( "shift-spell*", "" )
 				sBtn:SetAttribute( "ctrl-spell*", "" )
+				sBtn:SetAttribute( "alt-spell*", "" )
 				sBtn:Enable()
 
 				if mountInfo.name == m.db.favMount or mountInfo.name == m.db.favFlying then
@@ -424,6 +423,25 @@ function CSMounts.MountSpellButton_OnClick( self )
 		m.db[ mountInfo.fSpeed and "favFlying" or "favMount" ] = mountInfo.name
 		m.updateMountButton()
 		m.updateMountsTab()
+	elseif IsAltKeyDown() then
+		local dFrame = m.api.DressUpModelFrame
+		dFrame.mode = "mount"
+		dFrame:SetPosition( -2, 0, 0 )
+		dFrame:SetDisplayInfo( 6444 )
+
+		m.api.DressUpFrameResetButton:Hide()
+		m.api.DressUpFrameDescriptionText:Hide()
+
+		local _, fileName = UnitRace( "player" )
+		SetDressUpBackground( m.api.DressUpFrame, fileName )
+
+		ShowUIPanel( m.api.DressUpFrame )
+	end
+end
+
+function CSMounts.dressUpShow()
+	if m.api.DressUpFrame.mode ~= "mount" then
+		m.api.DressUpFrameDescriptionText:Show()
 	end
 end
 
@@ -514,7 +532,8 @@ function CSMounts.MountSpellBook_GetSpellBookSlot( btn )
 end
 
 function CSMounts.skinElvUI()
-	local E = unpack( ElvUI )
+	if not ElvUI then return end
+	local E = ElvUI[ 1 ]
 
 	if E then
 		local S = E:GetModule( 'Skins' )
@@ -590,7 +609,7 @@ end
 ---@param short boolean?
 function CSMounts.info( message, short )
 	local tag = string.format( "|c%s%s|r", m.tagcolor, short and m.short or m.name )
-	DEFAULT_CHAT_FRAME:AddMessage( string.format( "%s: %s", tag, message ) )
+	DEFAULT_CHAT_FRAME:AddMessage( string.format( "%s: %s", tag, message and message or "nil" ) )
 end
 
 ---@param t table
