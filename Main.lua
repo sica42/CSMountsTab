@@ -175,7 +175,7 @@ function CSMounts.updateMountsTab()
 		m.updateMounts()
 	end
 
-	if SpellBookFrame.selectedSkillLine == 0 then
+	if SpellBookFrame.currentTab.bookType == "spell" and SpellBookFrame.selectedSkillLine == 0 then
 		if not m.mountsFrame then
 			m.createMountsFrame()
 		end
