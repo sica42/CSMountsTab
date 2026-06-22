@@ -475,7 +475,7 @@ function CSMounts.updateMountButton()
 		m.btnMount:SetAttribute( "type", "spell" )
 	end
 
-	m.btnMount:SetAttribute( "spell", IsFlyableArea() and m.db.favFlying or m.db.favMount )
+	m.btnMount:SetAttribute( "spell", IsFlyableArea() and m.db.favFlying and m.db.favFlying or m.db.favMount )
 end
 
 ---@class MountSpellInfo
