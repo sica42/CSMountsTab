@@ -1,5 +1,5 @@
 # CSMountsTab
-**Version:** 0.2
+**Version:** 0.4
 **Game Version:** Crusader Storm WoW (2.4.3 and 2.5.3 clients)
 
 Adds a new mount tab to the spellbook.
@@ -11,9 +11,11 @@ Adds a new mount tab to the spellbook.
 ## Features
 
 * Adds a new mounts tab to the spellbook.
-* Ctrl-click mounts to mark favourites. You can mark 1 normal mount and 1 flying mount. 
+* Alt-click mounts to mark favorites. You can mark 1 normal mount and 1 flying mount. 
+* Ctrl-click mounts to view 3D model (Only in 2.5.3)
 * Use `/click MountFav` in a macro to cast favourite flying mount in Outland and normal mount in Azeroth.
-* You can change sort order by using `/mounts sort`.
+* `/mounts sort` - Change sort order.
+* `/mounts info` - Toggle showing of info text at top
 
 ---
 

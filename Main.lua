@@ -36,6 +36,7 @@ function CSMounts.events:PLAYER_ENTERING_WORLD()
 	CrusaderStormMountsOptions = CrusaderStormMountsOptions or {}
 	m.db = CrusaderStormMountsOptions
 	m.db.sort = m.db.sort or "alpha"
+	m.db.showInfo = m.db.showInfo == nil and true or false
 
 	local numTabs = GetNumSpellTabs()
 	m.mountsTabIndex = numTabs + 1
@@ -44,7 +45,9 @@ function CSMounts.events:PLAYER_ENTERING_WORLD()
 
 	hooksecurefunc( "SpellBookFrame_Update", CSMounts.spellBookUpdate )
 	hooksecurefunc( "SpellBookSkillLineTab_OnClick", CSMounts.tabClick )
-	--	hooksecurefunc( "DressUpFrame_Show", CSMounts.dressUpShow )
+	if m.isModern then
+		hooksecurefunc( "DressUpFrame_Show", CSMounts.dressUpShow )
+	end
 
 	m.api[ "SLASH_CSMounts1" ] = "/mounts"
 	SlashCmdList[ "CSMounts" ] = function( args )
@@ -54,13 +57,25 @@ function CSMounts.events:PLAYER_ENTERING_WORLD()
 			else
 				m.db.sort = "alpha"
 			end
-			m.info( "Sorting set to " .. (m.db.sort == "alpha" and "alphabetically" or "speed") .. "." )
+			m.info( "Sorting set to " .. (m.db.sort == "alpha" and "alphabetically" or "speed") .. ".", true )
 			m.updateMounts()
+			return
+		elseif args == "info" then
+			m.db.showInfo = not m.db.showInfo
+			if m.db.showInfo then
+				m.info( "Now showing info text at top")
+				if m.mountsFrame then m.mountsFrame.labelInfo:Show() end
+			else
+				m.info( "Now hiding info text at top")
+				if m.mountsFrame then m.mountsFrame.labelInfo:Hide() end
+			end
 			return
 		end
 
 		m.info( "Crusader Storm Mounts Tab Usage:", true )
+		m.info( "Use |cffaaaaaa/click MountFav|r in a macro to summon marked flying/normal mount.", true )
 		m.info( "|cffaaaaaa/mounts sort|r - Change sorting", true )
+		m.info( "|cffaaaaaa/mounts info|r - Toggle showing of info text at top of spell book", true )
 	end
 
 	m.updateMountButtonDelayed( 1, true )
@@ -107,8 +122,9 @@ function CSMounts.updateMounts()
 				name = spellName,
 				slotId = i,
 				spellId = spellId,
-				mSpeed = mountInfo[ 1 ],
-				fSpeed = mountInfo[ 2 ]
+				model = mountInfo[ 1 ],
+				mSpeed = mountInfo[ 2 ],
+				fSpeed = mountInfo[ 3 ]
 			} )
 		end
 	end
@@ -137,7 +153,7 @@ function CSMounts.updateMounts()
 
 	sort( m.mountSpells, m.db.sort == "alpha" and sortAlpha or sortSpeed )
 
-	if SpellBookFrame:IsVisible() and m.mountsFrame and m.mountsFrame:IsVisible() then
+	if not m.scanning and SpellBookFrame:IsVisible() and m.mountsFrame and m.mountsFrame:IsVisible() then
 		m.updateMountsTab()
 	end
 end
@@ -169,8 +185,10 @@ function CSMounts.spellBookUpdate()
 end
 
 function CSMounts.updateMountsTab()
-	if m.delayScan > 0 then
+	if m.delayScan > 0 and not m.scanning then
+		m.scanning = true
 		m.updateMounts()
+		m.scanning = false
 	end
 
 	if SpellBookFrame.bookType == "spell" and SpellBookFrame.selectedSkillLine == 0 then
@@ -239,6 +257,22 @@ function CSMounts.createMountsFrame()
 	local frame = CreateFrame( "Frame", nil, m.api[ "SpellBookFrame" ] )
 	frame:SetAllPoints()
 	frame:SetFrameLevel( m.api[ "SpellBookFrame" ]:GetFrameLevel() + 10 )
+
+	local info = frame:CreateFontString( nil, "ARTWORK", "GameFontNormal" )
+	info:SetJustifyH( "LEFT" )
+	info:SetPoint( "TOPLEFT", frame, "TOPLEFT", 80, -45 )
+	info:SetWidth( 250 )
+	local text = "Alt-Click to mark favorite mount/flying mount."
+	if m.isModern then
+		text = text .. "\nCtrl-Click to view 3D model."
+	end
+	info:SetText( text )
+	frame.labelInfo = info
+	if m.db.showInfo then
+		info:Show()
+	else
+		info:Hide()
+	end
 
 	for i = 1, SPELLS_PER_PAGE do
 		local btn = m.createMountSpellButton( frame, i )
@@ -418,24 +452,37 @@ function CSMounts.MountSpellButton_OnClick( self )
 		else
 			ChatEdit_InsertLink( GetSpellLink( mountInfo.slotId, SpellBookFrame.bookType ) )
 		end
-	elseif IsControlKeyDown() then
+	elseif IsAltKeyDown() then
 		local mountInfo = m.getMountSpellInfo( self:GetID() + ((m.currentPage - 1) * SPELLS_PER_PAGE) )
 		m.db[ mountInfo.fSpeed and "favFlying" or "favMount" ] = mountInfo.name
 		m.updateMountButton()
 		m.updateMountsTab()
-	elseif IsAltKeyDown() then
-		local dFrame = m.api.DressUpModelFrame
-		dFrame.mode = "mount"
-		dFrame:SetPosition( -2, 0, 0 )
-		dFrame:SetDisplayInfo( 6444 )
+	elseif IsControlKeyDown() then
+		if m.isModern then
+			local mountInfo = m.getMountSpellInfo( self:GetID() + ((m.currentPage - 1) * SPELLS_PER_PAGE) )
+			local model = mountInfo.model
 
-		m.api.DressUpFrameResetButton:Hide()
-		m.api.DressUpFrameDescriptionText:Hide()
+			if model and model[ 1 ] then
+				local dFrame = m.api.DressUpModelFrame
+				m.api.DressUpFrame.mode = "mount"
 
-		local _, fileName = UnitRace( "player" )
-		SetDressUpBackground( m.api.DressUpFrame, fileName )
+				if model[ 2 ] then
+					local pos = m.cameraSettings[ model[ 2 ] ]
+					dFrame:SetPosition( pos[ 1 ], pos[ 2 ], pos[ 3 ] )
+				else
+					dFrame:SetPosition( -3, 0, 0 )
+				end
 
-		ShowUIPanel( m.api.DressUpFrame )
+				dFrame:SetDisplayInfo( model[ 1 ] )
+
+				m.api.DressUpFrameResetButton:Hide()
+				m.api.DressUpFrameDescriptionText:Hide()
+
+				local _, fileName = UnitRace( "player" )
+				SetDressUpBackground( m.api.DressUpFrame, fileName )
+				ShowUIPanel( m.api.DressUpFrame )
+			end
+		end
 	end
 end
 
@@ -500,6 +547,7 @@ end
 ---@field name string
 ---@field slotId number
 ---@field spellId number
+---@field model number?
 ---@field mSpeed number
 ---@field fSpeed number?
 
@@ -545,6 +593,7 @@ function CSMounts.skinElvUI()
 			m.api[ "SpellbookMountsPageText" ]:Point( 'BOTTOM', -10, 87 )
 			m.api[ "SpellbookMountsPagePrev" ]:Point( 'BOTTOMRIGHT', m.mountsFrame, 'BOTTOMRIGHT', -73, 87 )
 			m.api[ "SpellbookMountsPageNext" ]:Point( 'TOPLEFT', m.api[ "SpellbookMountsPagePrev" ], 'TOPLEFT', 30, 0 )
+			m.mountsFrame.labelInfo:SetPoint( "TOPLEFT", m.mountsFrame, "TOPLEFT", 80, -28 )
 		else
 			m.api[ "SpellbookMountsPageText" ]:Point( "CENTER", m.mountsFrame, "BOTTOMLEFT", 185, 0 )
 			m.api[ "SpellbookMountsPagePrev" ]:Point( "CENTER", m.mountsFrame, "BOTTOMLEFT", 30, 100 )
